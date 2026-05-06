@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Probrand Table Tennis Championship 2026</title>
+  <title>Probrand Ping Pong Championship 2025</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -125,8 +125,8 @@
 
   <div class="header">
     <span class="ping-icon">🏓</span>
-    <h1>Probrand <span>Table Tennis</span><br>Championship</h1>
-    <p class="subtitle">Office Tournament · 2026</p>
+    <h1>Probrand <span>Ping Pong</span><br>Championship</h1>
+    <p class="subtitle">Office Tournament · 2025</p>
     <div style="display:flex;justify-content:center;margin-top:14px;">
       <div class="status-pill"><div class="status-dot"></div>Season in progress</div>
     </div>
@@ -148,7 +148,7 @@
     <div class="section-title">🏆 <span>Leaderboard</span></div>
   </div>
   <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Top 8 qualifier</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Quarter finalist</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>1st</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--silver)"></div>2nd</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--bronze)"></div>3rd</div>
@@ -165,7 +165,7 @@
           <th class="center hide-mobile">Losses</th>
           <th class="center">Pts</th>
           <th class="center hide-mobile">Diff</th>
-          <th class="center">Top 8</th>
+          <th class="center">Quarter Final</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -219,8 +219,12 @@ const FIXTURES = [
 //
 //  Format: { p1:"Full Name", score1: 11, p2:"Full Name", score2: 7 }
 //
-//  Scoring: Win = 2 points, Loss = 0 points
+//  Scoring: Win = 3 points | Loss = 1 point | No-show = 0 points
 //  Point diff = score difference accumulated across matches
+//
+//  For a no-show, add noshow:true, e.g.:
+//  { p1:"Paul Roman", score1:11, p2:"Carl Holland", score2:0, noshow:true }
+//  (winner gets 3pts, no-show player gets 0pts)
 //
 //  Names must match the PLAYERS list exactly.
 // ================================================================
@@ -253,8 +257,16 @@ function computeStats() {
     a.played++; b.played++;
     a.diff += m.score1 - m.score2;
     b.diff += m.score2 - m.score1;
-    if(m.score1 > m.score2){ a.wins++;a.points+=2;b.losses++; }
-    else { b.wins++;b.points+=2;a.losses++; }
+    // Scoring: Win=3pts, Loss=1pt, No-show=0pts
+    // A no-show is recorded with score 0 and opponent score > 0, and flagged as noshow:true
+    if(m.noshow){
+      // winner gets 3, no-show gets 0
+      if(m.score1 > m.score2){ a.wins++;a.points+=3; }
+      else { b.wins++;b.points+=3; }
+    } else {
+      if(m.score1 > m.score2){ a.wins++;a.points+=3;b.losses++;b.points+=1; }
+      else { b.wins++;b.points+=3;a.losses++;a.points+=1; }
+    }
   });
   return stats;
 }
@@ -334,7 +346,7 @@ function renderLeaderboard(stats) {
     const rkHtml=!p._rank?`<span class="rank-other">–</span>`:p._rank<=3?`<div class="rank-cell rank-${p._rank}">${p._rank}</div>`:`<div class="rank-cell"><span class="rank-other">${p._rank}</span></div>`;
     const diffHtml=p.played===0?`<span class="num zero">—</span>`:`<span class="num ${p.diff>0?'pos':p.diff<0?'neg':''}">${p.diff>0?'+':''}${p.diff}</span>`;
     const bar=p.played>0?`<div class="wl-bar"><div class="wl-win" style="width:${(p.wins/p.played*100).toFixed(0)}%"></div><div class="wl-loss" style="width:${(p.losses/p.played*100).toFixed(0)}%"></div></div>`:'';
-    const badge=p.played===0?`<span class="badge-tbd">TBD</span>`:top8?`<span class="badge-top8">✦ Yes</span>`:`<span class="badge-no">No</span>`;
+    const badge=p.played===0?`<span class="badge-tbd">TBD</span>`:top8?`<span class="badge-top8">✦ QF</span>`:`<span class="badge-no">Out</span>`;
 
     tr.innerHTML=`
       <td class="center">${rkHtml}</td>

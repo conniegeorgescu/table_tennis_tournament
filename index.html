@@ -148,6 +148,18 @@
       border-color: rgba(0,229,160,0.35);
     }
 
+    /* Game label inside match card (used in best-of-3 final) */
+    .match-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 18px 6px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,209,102,0.04);
+    }
+
     .player {
       display: flex;
       justify-content: space-between;
@@ -191,7 +203,7 @@
       border-radius: 20px;
       padding: 28px 20px;
       text-align: center;
-      margin: 14px 16px 0;
+      margin: 0 0 0;
     }
 
     .champion-label {
@@ -213,7 +225,7 @@
 
     /* vertical spacing for semis and final to align with QF pairs */
     .semis-body { padding-top: 50px; gap: 92px !important; }
-    .final-body { padding-top: 148px; }
+    .final-body { padding-top: 60px; }
   </style>
 </head>
 
@@ -228,7 +240,7 @@
     <div style="display:flex; justify-content:center; margin-top:14px;">
       <div class="status-pill">
         <div class="status-dot"></div>
-        Quarter Finals · Semi Finals · Final
+        Quarter Finals · Semi Finals · Final (Best of 3)
       </div>
     </div>
   </div>
@@ -240,22 +252,28 @@
 <script>
 /* ==========================================================
    EDIT SCORES HERE 👇
-   Set scores to null if the match hasn't been played yet.
+   Set scores to null if a game hasn't been played yet.
 ========================================================== */
 
 const QF = [
   { p1:"Paul Rennalls", s1:11, p2:"Carl Holland",    s2:2 },
-  { p1:"Jon Garvey",    s1:11,   p2:"Paul Roman",      s2:1    },
-  { p1:"Hasan Haideri", s1:11,   p2:"Michael Doherty", s2:8    },
-  { p1:"Keane Richards",s1:4,    p2:"Rourke Smal",     s2:11   }
+  { p1:"Jon Garvey",    s1:11, p2:"Paul Roman",      s2:1 },
+  { p1:"Hasan Haideri", s1:11, p2:"Michael Doherty", s2:8 },
+  { p1:"Keane Richards",s1:4,  p2:"Rourke Smal",     s2:11 }
 ];
 
 const SF = [
-   { p1:"Paul Rennalls", s1:10, p2:"Jon Garvey",    s2:12 },
-  { p1:"Hasan Haideri",    s1:6,   p2:"Rourke Smal",      s2:11    },
+  { p1:"Paul Rennalls", s1:10, p2:"Jon Garvey",  s2:12 },
+  { p1:"Hasan Haideri", s1:6,  p2:"Rourke Smal", s2:11 },
 ];
 
-const FIN = { s1:null, s2:null };
+// Best of 3 — enter scores for each game as they're played.
+// Set both scores to null for games not yet played.
+const FIN = [
+  { s1:null, s2:null },  // Game 1
+  { s1:null, s2:null },  // Game 2
+  { s1:null, s2:null },  // Game 3
+];
 
 /* ========================================================== */
 
@@ -264,7 +282,20 @@ function getWinner(match, p1, p2) {
   return match.s1 > match.s2 ? p1 : p2;
 }
 
-function buildMatch(p1, s1, p2, s2) {
+// Returns the best-of-3 champion (first to win 2 games)
+function getFinalWinner(p1, p2) {
+  let w1 = 0, w2 = 0;
+  for (const game of FIN) {
+    if (game.s1 == null || game.s2 == null) continue;
+    if (game.s1 > game.s2) w1++;
+    else if (game.s2 > game.s1) w2++;
+  }
+  if (w1 >= 2) return p1;
+  if (w2 >= 2) return p2;
+  return null;
+}
+
+function buildMatch(p1, s1, p2, s2, label) {
   const played = s1 != null && s2 != null;
   const w1 = played && s1 > s2;
   const w2 = played && s2 > s1;
@@ -278,7 +309,10 @@ function buildMatch(p1, s1, p2, s2) {
     </div>`;
   };
 
+  const labelHtml = label ? `<div class="match-label">${label}</div>` : '';
+
   return `<div class="match">
+    ${labelHtml}
     ${row(p1, s1, w1, played && !w1)}
     ${row(p2, s2, w2, played && !w2)}
   </div>`;
@@ -297,7 +331,18 @@ function render() {
 
   const finP1 = sfW0 || 'TBD';
   const finP2 = sfW1 || 'TBD';
-  const champ = getWinner(FIN, finP1, finP2);
+  const champ = getFinalWinner(finP1, finP2);
+
+  // Tally game wins for scoreline display (e.g. "1 – 0")
+  let gw1 = 0, gw2 = 0;
+  FIN.forEach(g => {
+    if (g.s1 == null || g.s2 == null) return;
+    if (g.s1 > g.s2) gw1++; else gw2++;
+  });
+  const anyFinPlayed = FIN.some(g => g.s1 != null && g.s2 != null);
+  const gameScoreLine = anyFinPlayed
+    ? `<div style="font-family:'DM Mono',monospace;font-size:0.72rem;letter-spacing:0.14em;color:var(--muted);text-align:center;margin-bottom:10px;">${gw1} – ${gw2} games</div>`
+    : '';
 
   document.getElementById('bracket').innerHTML = `
 
@@ -325,10 +370,13 @@ function render() {
     <div class="round">
       <div class="round-title gold">Final</div>
       <div class="round-body final-body">
-        ${buildMatch(finP1, FIN.s1, finP2, FIN.s2)}
+        ${buildMatch(finP1, FIN[0].s1, finP2, FIN[0].s2, 'Game 1')}
+        ${buildMatch(finP1, FIN[1].s1, finP2, FIN[1].s2, 'Game 2')}
+        ${buildMatch(finP1, FIN[2].s1, finP2, FIN[2].s2, 'Game 3')}
         <div class="champion-box">
           <div class="trophy">🏆</div>
           <div class="champion-label">Champion</div>
+          ${gameScoreLine}
           <div class="champion-name">${champ || 'TBD'}</div>
         </div>
       </div>
